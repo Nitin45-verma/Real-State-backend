@@ -5,7 +5,8 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['Seller', 'Buyer'], required: true }
+  role: { type: String, enum: ['Seller', 'Buyer', 'Admin'], required: true },
+  isVerified: { type: Boolean, default: false }
 }, { timestamps: true });
 
 // Pre-save hook to hash user password precisely once

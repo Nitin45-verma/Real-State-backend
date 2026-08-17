@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const Property = require('../models/Property');
+const User = require('../models/User');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const storage = multer.diskStorage({
@@ -17,9 +18,17 @@ const upload = multer({ storage: storage });
 
 router.post('/', authMiddleware, upload.single('image'), async (req, res) => {
   try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.role === 'Seller' && !user.isVerified) {
+      return res.status(403).json({ error: 'Your seller email has not been verified by an Administrator yet. Please contact an Admin to verify your seller email.' });
+    }
+
     const propertyData = {
       ...req.body,
-      user_id: req.user.id
+      user_id: req.user.id,
+      isApproved: user.role === 'Admin'
     };
     if (req.file) {
       propertyData.image = '/uploads/' + req.file.filename;
@@ -34,7 +43,7 @@ router.post('/', authMiddleware, upload.single('image'), async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const properties = await Property.find().populate('user_id', 'name email role').sort({ createdAt: -1 });
+    const properties = await Property.find({ isApproved: true }).populate('user_id', 'name email role').sort({ createdAt: -1 });
     res.json(properties);
   } catch (err) {
     res.status(500).json({ error: err.message });
