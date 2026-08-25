@@ -49,9 +49,18 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
-// Health check endpoint for Render monitoring
+// Health check and Test GET endpoints
 app.get('/', (req, res) => {
   res.json({ status: 'Online', message: 'Nitin Real Estate API Server is Running' });
+});
+
+app.get('/api/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'GET API is working successfully!',
+    timestamp: new Date().toISOString(),
+    server: 'AWS EC2 - Nitin Real Estate'
+  });
 });
 
 // Routes
