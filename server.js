@@ -42,6 +42,14 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/nitin-real
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log('Connected to MongoDB');
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use by another process. Please terminate the conflicting process or change PORT in .env.`);
+      } else {
+        console.error('Server listen error:', err);
+      }
+    });
   })
   .catch((err) => console.error('MongoDB connection error:', err));
+
