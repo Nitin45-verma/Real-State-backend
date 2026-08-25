@@ -16,8 +16,8 @@ module.exports = async (req, res, next) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const allowedAdminEmails = ['admin@nitinrealestate.com', 'nikn63641@gmail.com'];
-    if (dbUser.role !== 'Admin' || !allowedAdminEmails.includes(dbUser.email)) {
+    const allowedAdminEmails = ['nikn63641@gmail.com', 'admin@nitinrealestate.com', process.env.ADMIN_EMAIL].filter(Boolean).map(e => e.toLowerCase());
+    if (dbUser.role !== 'Admin' || !allowedAdminEmails.includes(dbUser.email.toLowerCase())) {
       return res.status(403).json({ error: 'Access denied: Admin panel access restricted to authorized administrators.' });
     }
 

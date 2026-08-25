@@ -65,12 +65,43 @@ app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 
+const User = require('./models/User');
+
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/nitin-real-estate';
 
+const ensureAdminUser = async () => {
+  try {
+    const adminEmail = (process.env.ADMIN_EMAIL || 'nikn63641@gmail.com').toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || 'nitin123';
+
+    let admin = await User.findOne({ email: adminEmail });
+
+    if (admin) {
+      admin.role = 'Admin';
+      admin.isVerified = true;
+      admin.password = adminPassword; // Triggers pre('save') bcrypt hashing in User model
+      await admin.save();
+      console.log(`✅ Admin account updated/verified: ${adminEmail}`);
+    } else {
+      await User.create({
+        name: 'Nitin Admin',
+        email: adminEmail,
+        password: adminPassword, // Triggers pre('save') bcrypt hashing in User model
+        role: 'Admin',
+        isVerified: true
+      });
+      console.log(`✅ Admin account created: ${adminEmail}`);
+    }
+  } catch (err) {
+    console.error('❌ Failed to initialize admin user:', err.message);
+  }
+};
+
 mongoose.connect(MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log('Connected to MongoDB');
+    await ensureAdminUser();
     const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
@@ -81,4 +112,5 @@ mongoose.connect(MONGO_URI)
     });
   })
   .catch((err) => console.error('MongoDB connection error:', err));
+
 

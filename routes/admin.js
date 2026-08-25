@@ -26,8 +26,8 @@ router.post('/make-me-admin', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    const allowedAdminEmails = ['admin@nitinrealestate.com', 'nikn63641@gmail.com'];
-    if (!allowedAdminEmails.includes(user.email)) {
+    const allowedAdminEmails = ['nikn63641@gmail.com', 'admin@nitinrealestate.com', process.env.ADMIN_EMAIL].filter(Boolean).map(e => e.toLowerCase());
+    if (!allowedAdminEmails.includes(user.email.toLowerCase())) {
       return res.status(403).json({ error: 'Admin access is restricted to authorized emails' });
     }
     user.role = 'Admin';
@@ -201,8 +201,8 @@ router.put('/users/:id/role', adminMiddleware, async (req, res) => {
     }
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    const allowedAdminEmails = ['admin@nitinrealestate.com', 'nikn63641@gmail.com'];
-    if (role === 'Admin' && !allowedAdminEmails.includes(user.email)) {
+    const allowedAdminEmails = ['nikn63641@gmail.com', 'admin@nitinrealestate.com', process.env.ADMIN_EMAIL].filter(Boolean).map(e => e.toLowerCase());
+    if (role === 'Admin' && !allowedAdminEmails.includes(user.email.toLowerCase())) {
       return res.status(403).json({ error: 'Admin role is strictly reserved for authorized admin emails' });
     }
     user.role = role;

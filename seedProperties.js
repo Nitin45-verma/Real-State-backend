@@ -154,20 +154,21 @@ async function seed() {
     await mongoose.connect(MONGO_URI);
     console.log('Connected to MongoDB for seeding...');
 
-    let user = await User.findOne({ email: 'admin@nitinrealestate.com' });
-    if (!user) {
-      user = await User.findOne();
-    }
-    if (!user) {
-      const hashedPassword = await bcrypt.hash('password123', 10);
+    let user = await User.findOne({ email: 'nikn63641@gmail.com' });
+    if (user) {
+      user.password = 'nitin123';
+      user.role = 'Admin';
+      user.isVerified = true;
+      await user.save();
+    } else {
       user = await User.create({
-        name: 'Nitin Estate Admin',
-        email: 'admin@nitinrealestate.com',
-        password: hashedPassword,
+        name: 'Nitin Admin',
+        email: 'nikn63641@gmail.com',
+        password: 'nitin123',
         role: 'Admin',
         isVerified: true
       });
-      console.log('Created default admin user for property assignment');
+      console.log('Created default admin user (nikn63641@gmail.com) for property assignment');
     }
 
     const propertiesWithUser = sampleProperties.map(p => ({

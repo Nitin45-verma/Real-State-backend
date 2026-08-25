@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 
 // Get configuration from environment variables or defaults
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'admin@nitinrealestate.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'nikn63641@gmail.com';
 
 let transporter = null;
 
