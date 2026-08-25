@@ -12,6 +12,8 @@ const app = express();
 // Configure CORS for allowed origins including live Vercel frontend
 const allowedOrigins = [
   'https://nitin-real-state.vercel.app',
+  'http://13.60.227.235:5000',
+  'http://13.60.227.235',
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:5000'
