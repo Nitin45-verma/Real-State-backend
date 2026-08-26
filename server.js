@@ -1,5 +1,5 @@
 const dns = require('dns');
-try { dns.setServers(['8.8.8.8', '1.1.1.1']); } catch(e) {}
+try { dns.setServers(['8.8.8.8', '1.1.1.1']); } catch (e) { }
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -27,12 +27,12 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, curl)
     if (!origin) return callback(null, true);
-    
+
     const cleanOrigin = origin.replace(/\/$/, '');
     if (allowedOrigins.includes(cleanOrigin) || /\.vercel\.app$/.test(cleanOrigin)) {
       return callback(null, true);
     }
-    
+
     return callback(null, true);
   },
   credentials: true,
@@ -115,7 +115,10 @@ mongoose.connect(MONGO_URI)
   .then(async () => {
     console.log('Connected to MongoDB');
     await ensureAdminUser();
-    const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+    });
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
         console.error(`Port ${PORT} is already in use by another process. Please terminate the conflicting process or change PORT in .env.`);
