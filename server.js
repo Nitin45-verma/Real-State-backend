@@ -11,6 +11,8 @@ const app = express();
 
 // Configure CORS for allowed origins including live Vercel frontend
 const allowedOrigins = [
+  'http://13.51.201.78:5000',
+  'http://13.51.201.78',
   'http://51.20.2.234:5000',
   'http://51.20.2.234',
   'https://nitin-real-state.vercel.app',
@@ -72,6 +74,7 @@ const authRoutes = require('./routes/auth');
 const inquiryRoutes = require('./routes/inquiries');
 const paymentRoutes = require('./routes/payment');
 const adminRoutes = require('./routes/admin');
+const chatRoutes = require('./routes/chat');
 
 app.use('/api/properties', propertyRoutes);
 app.use('/api/contact', contactRoutes);
@@ -79,6 +82,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chat', chatRoutes);
 
 const User = require('./models/User');
 

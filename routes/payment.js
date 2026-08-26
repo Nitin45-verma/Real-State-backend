@@ -4,13 +4,11 @@ const crypto = require('crypto');
 const Razorpay = require('razorpay');
 const Transaction = require('../models/Transaction');
 const authMiddleware = require('../middleware/authMiddleware');
-
 const getRazorpayInstance = () => {
   const key_id = process.env.RAZORPAY_KEY_ID || 'rzp_test_TR8Mdnq5rde0vO';
   const key_secret = process.env.RAZORPAY_KEY_SECRET || 'Je6rMqjfMLzINdnEAIIt8QR2';
   return new Razorpay({ key_id, key_secret });
 };
-
 // GET Razorpay Public Key ID
 router.get('/key', (req, res) => {
   res.json({ key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_TR8Mdnq5rde0vO' });
@@ -20,7 +18,6 @@ router.get('/key', (req, res) => {
 const handleCreateOrder = async (req, res) => {
   try {
     const { property_id, amount = 50000 } = req.body;
-    
     if (!property_id) {
       return res.status(400).json({ error: 'property_id is required' });
     }
@@ -93,11 +90,10 @@ router.post('/verify', authMiddleware, async (req, res) => {
         tx.razorpay_payment_id = razorpay_payment_id;
         tx.razorpay_signature = razorpay_signature;
         if (razorpay_order_id) tx.razorpay_order_id = razorpay_order_id;
-        await tx.save();
-
+        await tx.save()
         return res.json({ success: true, message: 'Payment verified successfully', transaction: tx });
       } else {
-        tx.status = 'Failed';
+        tx.status = 'Failed'; 
         await tx.save();
         return res.status(400).json({ success: false, error: 'Invalid payment signature' });
       }
