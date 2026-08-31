@@ -21,6 +21,13 @@ Your goal is to guide visitors, qualify buyer/renter leads, answer property ques
 - If user types in Hinglish -> Reply strictly in natural daily-life Hinglish (e.g., "Noida me 2 BHK flat dekh rahe hain? Aapka preferred budget kitna hai?").
 - If user types in Hindi -> Reply in polite, clear Hindi (e.g., "नमस्ते! आप नोएडा में किस सेक्टर में फ्लैट देखना चाहते हैं?").
 - If user types in English -> Reply in clear, casual English (e.g., "Hey there! Are you looking to buy or rent a property in Noida?").
+
+# STRICT ANTI-LOOPING RULE (CONTACT INFO / PHONE NUMBER)
+1. ALWAYS check conversation history BEFORE asking for phone number or contact info.
+2. IF the user's mobile number or contact details are ALREADY present in history:
+   - NEVER ask for their phone number again.
+   - NEVER ask for callback verification.
+   - Immediately switch to "Assistance & Discovery" mode (ask about floor preference, parking, amenities, or site tour details).
 `;
 
 const getGeminiClient = () => {
@@ -81,7 +88,7 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // 1. Context Window Optimization: Limit history array to last 4-6 messages max
+    // 1. Context Window Optimization: Limit history array to last 6 messages max
     const recentHistory = Array.isArray(history) ? history.slice(-6) : [];
 
     // Format contents payload for Gemini API
@@ -95,41 +102,55 @@ router.post('/', async (req, res) => {
     });
     contents.push({ role: 'user', parts: [{ text: message }] });
 
+    // 2. Anti-Loop State Check: Check if phone number exists in message or history
+    const fullConvStr = message + ' ' + JSON.stringify(recentHistory);
+    const existingPhone = extractPhoneFromText(fullConvStr);
+
     let dynamicSystemPrompt = AURA_SYSTEM_PROMPT;
     if (userName) {
       dynamicSystemPrompt += `\n\nClient Name: "${userName}". Address them naturally by name when appropriate.`;
     }
 
-    // 2. Non-Blocking Async Lead Capture trigger in background
+    if (existingPhone) {
+      dynamicSystemPrompt += `\n\n[CRITICAL STATUS: CONTACT INFO ALREADY RECEIVED (Phone: ${existingPhone}). DO NOT ASK FOR PHONE NUMBER OR CONTACT DETAILS AGAIN. Acknowledge requirement and transition immediately to property assistance (parking, floor preference, amenities, or site visit scheduling).]`;
+    }
+
+    // 3. Non-Blocking Async Lead Capture trigger in background
     processBackgroundLeadCapture(message, recentHistory, userName);
 
-    // 3. Set SSE (Server-Sent Events) headers for real-time chunk streaming
+    // 4. Set SSE (Server-Sent Events) headers for real-time chunk streaming
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Prevents proxy buffering
 
-    // 4. Ultra Low Latency Stream Generation using gemini-3.6-flash
-    let responseStream;
+    // 5. Stream Generation with robust model fallback list
+    const candidateModels = ['gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-flash-latest'];
     const streamConfig = {
       systemInstruction: dynamicSystemPrompt,
       temperature: 0.8,
       maxOutputTokens: 150 // Strict output limit for speed
     };
 
-    try {
-      responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3.6-flash',
-        contents,
-        config: streamConfig
-      });
-    } catch (modelErr) {
-      console.warn('gemini-3.6-flash stream fallback to gemini-1.5-flash:', modelErr.message);
-      responseStream = await ai.models.generateContentStream({
-        model: 'gemini-1.5-flash',
-        contents,
-        config: streamConfig
-      });
+    let responseStream = null;
+    let lastError = null;
+
+    for (const modelName of candidateModels) {
+      try {
+        responseStream = await ai.models.generateContentStream({
+          model: modelName,
+          contents,
+          config: streamConfig
+        });
+        if (responseStream) break;
+      } catch (mErr) {
+        lastError = mErr;
+        console.warn(`Model ${modelName} unavailable, trying next fallback...`);
+      }
+    }
+
+    if (!responseStream) {
+      throw lastError || new Error('No available Gemini model responded');
     }
 
     for await (const chunk of responseStream) {
