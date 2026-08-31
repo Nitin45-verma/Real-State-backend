@@ -1,13 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Lead = require('../models/Lead');
-const authMiddleware = require('../middleware/authMiddleware');
-const adminMiddleware = require('../middleware/adminMiddleware');
 
 // POST /api/leads - Create new lead
 router.post('/', async (req, res) => {
   try {
-    const { name, phone, propertyType, budget, preferredLocation, message } = req.body;
+    const { name, phone, propertyType, budget, preferredLocation, message, requirement, location } = req.body;
     
     if (!phone) {
       return res.status(400).json({ error: 'Phone number is required to save lead' });
@@ -16,9 +14,9 @@ router.post('/', async (req, res) => {
     const lead = await Lead.create({
       name: name || 'Website Lead',
       phone,
-      propertyType: propertyType || 'General Inquiry',
+      propertyType: propertyType || requirement || 'General Inquiry',
       budget: budget || 'Not specified',
-      preferredLocation: preferredLocation || 'Not specified',
+      preferredLocation: preferredLocation || location || 'Not specified',
       message: message || 'Lead captured via Aura Chatbot',
       source: 'Aura AI Chatbot'
     });
@@ -36,14 +34,50 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/leads - Admin get all captured leads
-router.get('/', authMiddleware, adminMiddleware, async (req, res) => {
+// GET /api/leads - Fetch all captured leads (sorted by newest first)
+router.get('/', async (req, res) => {
   try {
     const leads = await Lead.find().sort({ createdAt: -1 });
-    return res.json(leads);
+    return res.json({
+      success: true,
+      count: leads.length,
+      leads
+    });
   } catch (err) {
     console.error('❌ Fetch Leads Error:', err);
     return res.status(500).json({ error: 'Failed to fetch leads' });
+  }
+});
+
+// PATCH /api/leads/:id - Update lead status (New, Contacted, Closed)
+router.patch('/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['New', 'Contacted', 'Closed'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+    const lead = await Lead.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    return res.json({ success: true, lead });
+  } catch (err) {
+    console.error('❌ Update Lead Error:', err);
+    return res.status(500).json({ error: 'Failed to update lead status' });
+  }
+});
+
+// DELETE /api/leads/:id - Delete lead
+router.delete('/:id', async (req, res) => {
+  try {
+    const lead = await Lead.findByIdAndDelete(req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    return res.json({ success: true, message: 'Lead deleted successfully' });
+  } catch (err) {
+    console.error('❌ Delete Lead Error:', err);
+    return res.status(500).json({ error: 'Failed to delete lead' });
   }
 });
 

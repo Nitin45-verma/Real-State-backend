@@ -51,7 +51,15 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(uploadsDir));
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+app.use(express.static(publicDir));
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(publicDir, 'admin.html'));
+});
 
 // Health check and Test GET endpoints
 app.get('/', (req, res) => {
