@@ -44,6 +44,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
+const compression = require('compression');
+
+app.use(compression());
 app.use(express.json());
 
 // Ensure uploads directory exists for file uploads
@@ -59,6 +62,12 @@ app.use(express.static(publicDir));
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(publicDir, 'admin.html'));
+});
+
+// Lightweight keep-alive & health check endpoints to prevent free tier cold starts
+app.get(['/ping', '/health', '/api/ping', '/api/health'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Health check and Test GET endpoints
