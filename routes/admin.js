@@ -7,6 +7,7 @@ const Property = require('../models/Property');
 const Inquiry = require('../models/Inquiry');
 const Contact = require('../models/Contact');
 const Transaction = require('../models/Transaction');
+const Booking = require('../models/Booking');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
 const { sendSellerVerifiedEmailToUser } = require('../utils/emailService');
@@ -51,6 +52,7 @@ router.get('/stats', adminMiddleware, async (req, res) => {
       totalInquiries,
       totalContacts,
       totalTransactions,
+      totalBookings,
       transactionsList,
       recentProperties,
       recentUsers
@@ -63,6 +65,7 @@ router.get('/stats', adminMiddleware, async (req, res) => {
       Inquiry.countDocuments(),
       Contact.countDocuments(),
       Transaction.countDocuments(),
+      Booking.countDocuments(),
       Transaction.find(),
       Property.find().sort({ createdAt: -1 }).limit(5).populate('user_id', 'name email'),
       User.find().select('-password').sort({ createdAt: -1 }).limit(5)
@@ -83,6 +86,7 @@ router.get('/stats', adminMiddleware, async (req, res) => {
         totalInquiries,
         totalContacts,
         totalTransactions,
+        totalBookings,
         totalRevenue,
         recentProperties,
         recentUsers
@@ -310,6 +314,47 @@ router.get('/transactions', adminMiddleware, async (req, res) => {
       .populate('property_id', 'title price location')
       .sort({ createdAt: -1 });
     res.json({ success: true, transactions });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bookings Management
+router.get('/bookings', adminMiddleware, async (req, res) => {
+  try {
+    const bookings = await Booking.find()
+      .populate('propertyId', 'title price location')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, bookings });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/bookings/:id/status', adminMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['Pending Verification', 'Confirmed', 'Cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value.' });
+    }
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+    res.json({ success: true, booking });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/bookings/:id', adminMiddleware, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+    await booking.deleteOne();
+    res.json({ success: true, message: 'Booking deleted successfully.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

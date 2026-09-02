@@ -93,6 +93,7 @@ const paymentRoutes = require('./routes/payment');
 const adminRoutes = require('./routes/admin');
 const chatRoutes = require('./routes/chat');
 const leadRoutes = require('./routes/leads');
+const bookingRoutes = require('./routes/bookings');
 
 app.use('/api/properties', propertyRoutes);
 app.use('/api/contact', contactRoutes);
@@ -102,6 +103,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/leads', leadRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 const User = require('./models/User');
 
