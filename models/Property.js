@@ -9,7 +9,10 @@ const propertySchema = new mongoose.Schema({
   contactInfo: { type: String, required: true },
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   isApproved: { type: Boolean, default: false },
-  image: { type: String, required: false }
+  image: { type: String, required: false },
+  panoramaImage: { type: String, required: false },
+  latitude: { type: Number, required: false },
+  longitude: { type: Number, required: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Property', propertySchema);

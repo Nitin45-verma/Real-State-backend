@@ -16,7 +16,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-router.post('/', authMiddleware, upload.single('image'), async (req, res) => {
+router.post('/', authMiddleware, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'panoramaImage', maxCount: 1 }]), async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -30,9 +30,16 @@ router.post('/', authMiddleware, upload.single('image'), async (req, res) => {
       user_id: req.user.id,
       isApproved: user.role === 'Admin'
     };
-    if (req.file) {
-      propertyData.image = '/uploads/' + req.file.filename;
+    
+    if (req.files) {
+      if (req.files.image) {
+        propertyData.image = '/uploads/' + req.files.image[0].filename;
+      }
+      if (req.files.panoramaImage) {
+        propertyData.panoramaImage = '/uploads/' + req.files.panoramaImage[0].filename;
+      }
     }
+    
     const newProperty = new Property(propertyData);
     const savedProperty = await newProperty.save();
     res.status(201).json(savedProperty);
@@ -45,6 +52,18 @@ router.get('/', async (req, res) => {
   try {
     const properties = await Property.find({ isApproved: true }).populate('user_id', 'name email role').sort({ createdAt: -1 });
     res.json(properties);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/:id', async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id).populate('user_id', 'name email role');
+    if (!property) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    res.json(property);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
