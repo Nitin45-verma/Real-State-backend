@@ -125,7 +125,7 @@ router.post('/', async (req, res) => {
     res.setHeader('X-Accel-Buffering', 'no'); // Prevents proxy buffering
 
     // 5. Stream Generation with robust model fallback list
-    const candidateModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+    const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash'];
     const streamConfig = {
       systemInstruction: dynamicSystemPrompt,
       temperature: 0.8,
@@ -145,20 +145,32 @@ router.post('/', async (req, res) => {
         if (responseStream) break;
       } catch (mErr) {
         lastError = mErr;
-        console.warn(`Model ${modelName} unavailable, trying next fallback...`);
+        console.warn(`Model ${modelName} unavailable, trying next fallback...`, mErr.message);
       }
     }
 
     if (!responseStream) {
-      throw lastError || new Error('No available Gemini model responded');
+      console.error('All Gemini models failed. Using graceful stream fallback.', lastError?.message);
+      const fallbackMessage = "Abhi hamare server par thoda heavy traffic hai. Aap apna contact number aur property requirement share kar dijiye, hamare property consultant aapko direct call karenge.";
+      res.write(`data: ${JSON.stringify({ text: fallbackMessage })}\n\n`);
+      if (res.flush) res.flush();
+      res.write(`data: [DONE]\n\n`);
+      return res.end();
     }
 
-    for await (const chunk of responseStream) {
-      const chunkText = chunk.text;
-      if (chunkText) {
-        res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
-        if (res.flush) res.flush();
+    try {
+      for await (const chunk of responseStream) {
+        const chunkText = chunk.text;
+        if (chunkText) {
+          res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+          if (res.flush) res.flush();
+        }
       }
+    } catch (streamErr) {
+      console.error('Gemini stream interrupted:', streamErr.message);
+      const fallbackMessage = " (Network issue encountered... please provide your number for a quick callback.)";
+      res.write(`data: ${JSON.stringify({ text: fallbackMessage })}\n\n`);
+      if (res.flush) res.flush();
     }
 
     // End of stream event
