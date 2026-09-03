@@ -104,7 +104,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/ai', require('./routes/ai'));
 
 const User = require('./models/User');
 
