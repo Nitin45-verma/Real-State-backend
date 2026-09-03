@@ -125,7 +125,7 @@ router.post('/', async (req, res) => {
     res.setHeader('X-Accel-Buffering', 'no'); // Prevents proxy buffering
 
     // 5. Stream Generation with robust model fallback list
-    const candidateModels = ['gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-flash-latest'];
+    const candidateModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
     const streamConfig = {
       systemInstruction: dynamicSystemPrompt,
       temperature: 0.8,

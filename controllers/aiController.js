@@ -30,7 +30,7 @@ exports.parseSearch = async (req, res) => {
     };
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: `Extract the real estate search criteria from the following query: "${query}"`,
       config: {
         responseMimeType: 'application/json',
@@ -82,7 +82,7 @@ exports.parseSearch = async (req, res) => {
 
   } catch (err) {
     console.error('Smart Search Error:', err);
-    res.status(500).json({ error: 'Failed to process smart search' });
+    res.status(500).json({ error: err.message || 'Failed to process smart search' });
   }
 };
 
@@ -126,7 +126,7 @@ exports.estimatePrice = async (req, res) => {
 - Furnishing: ${furnishing}`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -190,7 +190,7 @@ exports.analyzeImage = async (req, res) => {
     };
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: [
         {
           inlineData: {
@@ -225,6 +225,6 @@ exports.analyzeImage = async (req, res) => {
     if (req.file && req.file.path) {
       fs.unlink(req.file.path, () => {});
     }
-    res.status(500).json({ error: 'Failed to analyze image' });
+    res.status(500).json({ error: err.message || 'Failed to analyze image' });
   }
 };
