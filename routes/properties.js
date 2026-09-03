@@ -16,7 +16,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-router.post('/', authMiddleware, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'panoramaImage', maxCount: 1 }]), async (req, res) => {
+router.post('/', authMiddleware, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'panoramaImage', maxCount: 1 }, { name: 'ownershipDocument', maxCount: 1 }]), async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -38,6 +38,9 @@ router.post('/', authMiddleware, upload.fields([{ name: 'image', maxCount: 1 }, 
       if (req.files.panoramaImage) {
         propertyData.panoramaImage = '/uploads/' + req.files.panoramaImage[0].filename;
       }
+      if (req.files.ownershipDocument) {
+        propertyData.ownershipDocument = '/uploads/' + req.files.ownershipDocument[0].filename;
+      }
     }
     
     const newProperty = new Property(propertyData);
@@ -52,6 +55,26 @@ router.get('/', async (req, res) => {
   try {
     const properties = await Property.find({ isApproved: true }).populate('user_id', 'name email role').sort({ createdAt: -1 });
     res.json(properties);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin verify property document
+router.put('/verify/:id', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== 'Admin') {
+      return res.status(403).json({ error: 'Only admins can verify properties' });
+    }
+
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    property.isVerified = req.body.isVerified;
+    await property.save();
+
+    res.json({ message: 'Property verification status updated', property });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

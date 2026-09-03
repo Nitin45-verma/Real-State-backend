@@ -6,6 +6,8 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const { Server } = require('socket.io');
+const Message = require('./models/Message');
 
 const app = express();
 
@@ -148,6 +150,57 @@ mongoose.connect(MONGO_URI)
       console.log(`Server running on port ${PORT}`);
     });
 
+    const io = new Server(server, {
+      cors: {
+        origin: (origin, callback) => {
+          if (!origin) return callback(null, true);
+          const cleanOrigin = origin.replace(/\/$/, '');
+          if (allowedOrigins.includes(cleanOrigin) || /\.vercel\.app$/.test(cleanOrigin)) {
+            return callback(null, true);
+          }
+          return callback(null, true);
+        },
+        methods: ["GET", "POST"],
+        credentials: true
+      }
+    });
+
+    io.on('connection', (socket) => {
+      console.log('New client connected via socket.io:', socket.id);
+
+      socket.on('join_room', async ({ property_id, buyer_id, seller_id }) => {
+        // Room ID is consistently generated using both IDs and property ID to ensure uniqueness
+        const room = `${property_id}_${buyer_id}_${seller_id}`;
+        socket.join(room);
+        console.log(`Socket ${socket.id} joined room ${room}`);
+      });
+
+      socket.on('send_message', async (data) => {
+        try {
+          const { property_id, sender_id, receiver_id, content } = data;
+          const room = `${property_id}_${data.buyer_id}_${data.seller_id}`;
+          
+          // Save to DB
+          const message = new Message({
+            property_id,
+            sender_id,
+            receiver_id,
+            content
+          });
+          const savedMessage = await message.save();
+
+          // Broadcast to everyone in the room (including sender to confirm)
+          io.to(room).emit('receive_message', savedMessage);
+        } catch (error) {
+          console.error('Error saving/sending message:', error);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
+      });
+    });
+
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
         console.error(`Port ${PORT} is already in use by another process. Please terminate the conflicting process or change PORT in .env.`);
@@ -157,5 +210,3 @@ mongoose.connect(MONGO_URI)
     });
   })
   .catch((err) => console.error('MongoDB connection error:', err));
-
-
