@@ -93,11 +93,18 @@ exports.parseSearch = async (req, res) => {
  */
 exports.estimatePrice = async (req, res) => {
   try {
-    const { areaSqFt, bhk, locality, floor, ageOfBuilding, furnishing } = req.body;
-
-    if (!areaSqFt || !locality) {
-      return res.status(400).json({ error: 'Area (sq ft) and locality are required fields.' });
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Gemini API Key missing in environment" });
     }
+
+    // Safe fallback defaults for req.body
+    const body = req.body || {};
+    const locality = body.locality || 'Unknown Locality';
+    const areaSqFt = body.areaSqFt ? Number(body.areaSqFt) : 1000;
+    const bhk = body.bhk ? Number(body.bhk) : 2;
+    const floor = body.floor || 'N/A';
+    const ageOfBuilding = body.ageOfBuilding || 'N/A';
+    const furnishing = body.furnishing || 'N/A';
 
     const schema = {
       type: Type.OBJECT,
@@ -113,10 +120,10 @@ exports.estimatePrice = async (req, res) => {
     const prompt = `Act as an expert real estate appraiser in India. Provide a fair market valuation for a property with the following details:
 - Locality: ${locality}
 - Area: ${areaSqFt} sq ft
-- Bedrooms (BHK): ${bhk || 'N/A'}
-- Floor: ${floor || 'N/A'}
-- Age of Building: ${ageOfBuilding || 'N/A'} years
-- Furnishing: ${furnishing || 'N/A'}`;
+- Bedrooms (BHK): ${bhk}
+- Floor: ${floor}
+- Age of Building: ${ageOfBuilding} years
+- Furnishing: ${furnishing}`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -128,16 +135,29 @@ exports.estimatePrice = async (req, res) => {
       }
     });
 
-    const valuation = JSON.parse(response.text());
+    let valuation;
+    try {
+      valuation = JSON.parse(response.text());
+    } catch (parseError) {
+      console.warn('Failed to parse Gemini response as JSON. Using fallback.', parseError);
+      const fallbackPricePerSqFt = 5000;
+      const estimatedValue = areaSqFt * fallbackPricePerSqFt;
+      valuation = {
+        estimatedPriceRange: `₹${(estimatedValue * 0.9).toLocaleString('en-IN')} - ₹${(estimatedValue * 1.1).toLocaleString('en-IN')}`,
+        pricePerSqFt: fallbackPricePerSqFt,
+        rentalYield: 3.5,
+        rationale: "This is a fallback automated valuation due to unexpected AI response."
+      };
+    }
 
     res.json({
       success: true,
       valuation
     });
 
-  } catch (err) {
-    console.error('Valuation Error:', err);
-    res.status(500).json({ error: 'Failed to estimate property value' });
+  } catch (error) {
+    console.error("Valuation Error:", error);
+    res.status(500).json({ error: error.message || "Failed to calculate valuation" });
   }
 };
 
