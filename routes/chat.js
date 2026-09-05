@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenAI } = require('@google/genai');
 const Lead = require('../models/Lead');
+const Message = require('../models/Message');
+const authMiddleware = require('../middleware/authMiddleware');
 
 const AURA_SYSTEM_PROMPT = `
 # Role & Identity
@@ -186,6 +188,46 @@ router.post('/', async (req, res) => {
       res.write(`data: [DONE]\n\n`);
       res.end();
     }
+  }
+});
+
+// GET /api/chat/history/:property_id/:buyer_id/:seller_id
+router.get('/history/:property_id/:buyer_id/:seller_id', authMiddleware, async (req, res) => {
+  try {
+    const { property_id, buyer_id, seller_id } = req.params;
+    
+    // Ensure the logged in user is either the buyer or the seller
+    if (req.user.id !== buyer_id && req.user.id !== seller_id) {
+      return res.status(403).json({ error: 'Unauthorized to view this chat' });
+    }
+
+    const messages = await Message.find({
+      property_id,
+      $or: [
+        { sender_id: buyer_id, receiver_id: seller_id },
+        { sender_id: seller_id, receiver_id: buyer_id }
+      ]
+    }).sort({ createdAt: 1 });
+
+    res.json({ success: true, messages });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/chat/read
+router.put('/read', authMiddleware, async (req, res) => {
+  try {
+    const { property_id, sender_id } = req.body; // sender_id of the messages to mark as read
+    
+    await Message.updateMany(
+      { property_id, sender_id, receiver_id: req.user.id, read: false },
+      { $set: { read: true } }
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
