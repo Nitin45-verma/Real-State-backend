@@ -140,7 +140,7 @@ router.post('/', async (req, res) => {
     res.setHeader('X-Accel-Buffering', 'no'); // Prevents proxy buffering
 
     // 5. Stream Generation with robust model fallback list
-    const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+    const candidateModels = ['gemini-3.6-flash', 'gemini-2.5-flash-latest', 'gemini-1.5-flash'];
     const streamConfig = {
       systemInstruction: dynamicSystemPrompt,
       temperature: 0.8,
@@ -157,7 +157,10 @@ router.post('/', async (req, res) => {
           contents,
           config: streamConfig
         });
-        if (responseStream) break;
+        if (responseStream) {
+          console.log(`✅ Successfully connected to Gemini API using model: ${modelName}`);
+          break;
+        }
       } catch (mErr) {
         lastError = mErr;
         console.warn(`Model ${modelName} unavailable, trying next fallback...`, mErr.message);
