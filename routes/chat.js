@@ -138,9 +138,10 @@ router.post('/', async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Prevents proxy buffering
+    res.flushHeaders();
 
     // 5. Stream Generation with robust model fallback list
-    const candidateModels = ['gemini-3.6-flash', 'gemini-2.5-flash-latest', 'gemini-1.5-flash'];
+    const candidateModels = ['gemini-3.6-flash'];
     const streamConfig = {
       systemInstruction: dynamicSystemPrompt,
       temperature: 0.8,
@@ -152,18 +153,24 @@ router.post('/', async (req, res) => {
 
     for (const modelName of candidateModels) {
       try {
-        responseStream = await ai.models.generateContentStream({
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Gemini API timeout')), 6000)
+        );
+        const apiPromise = ai.models.generateContentStream({
           model: modelName,
           contents,
           config: streamConfig
         });
+        
+        responseStream = await Promise.race([apiPromise, timeoutPromise]);
+        
         if (responseStream) {
           console.log(`✅ Successfully connected to Gemini API using model: ${modelName}`);
           break;
         }
       } catch (mErr) {
         lastError = mErr;
-        console.warn(`Model ${modelName} unavailable, trying next fallback...`, mErr.message);
+        console.warn(`Model ${modelName} unavailable or timed out, trying next fallback...`, mErr.message);
       }
     }
 
@@ -184,16 +191,17 @@ router.post('/', async (req, res) => {
           if (res.flush) res.flush();
         }
       }
+      res.write(`data: [DONE]\n\n`);
     } catch (streamErr) {
       console.error('Gemini stream interrupted:', streamErr.message);
       const fallbackMessage = " (Network issue encountered... please provide your number for a quick callback.)";
       res.write(`data: ${JSON.stringify({ text: fallbackMessage })}\n\n`);
+      res.write(`data: [DONE]\n\n`);
       if (res.flush) res.flush();
+    } finally {
+      // Ensure the stream is ALWAYS closed properly
+      res.end();
     }
-
-    // End of stream event
-    res.write(`data: [DONE]\n\n`);
-    res.end();
 
   } catch (err) {
     console.error('❌ Gemini Chat Stream Error:', err);
