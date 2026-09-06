@@ -57,15 +57,22 @@ const processBackgroundLeadCapture = (message, history, userName) => {
         const locationMatch = fullConversationStr.match(/(noida|greater noida|gurgaon|delhi|sector\s*\d+|expressway)/i);
         const bhkMatch = fullConversationStr.match(/(\d\s*bhk|villa|flat|plot)/i);
 
-        await Lead.create({
-          name: userName || 'Website Lead',
-          phone: detectedPhone,
-          budget: budgetMatch ? budgetMatch[0] : 'Not specified',
-          propertyType: bhkMatch ? bhkMatch[0] : 'General Inquiry',
-          preferredLocation: locationMatch ? locationMatch[0] : 'Not specified',
-          message: message,
-          source: 'Aura AI Chatbot'
-        });
+        await Lead.findOneAndUpdate(
+          { phone: detectedPhone },
+          {
+            $setOnInsert: {
+              name: userName || 'Website Lead',
+              source: 'Aura AI Chatbot'
+            },
+            $set: {
+              budget: budgetMatch ? budgetMatch[0] : 'Not specified',
+              propertyType: bhkMatch ? bhkMatch[0] : 'General Inquiry',
+              preferredLocation: locationMatch ? locationMatch[0] : 'Not specified',
+              message: message
+            }
+          },
+          { upsert: true, new: true }
+        );
         console.log(`⚡ Async Non-Blocking Lead Saved: ${detectedPhone}`);
       }
     } catch (err) {
@@ -102,6 +109,12 @@ router.post('/', async (req, res) => {
         contents.push({ role, parts: [{ text }] });
       }
     });
+    
+    // Ensure the conversation history starts with a 'user' role
+    while (contents.length > 0 && contents[0].role === 'model') {
+      contents.shift();
+    }
+    
     contents.push({ role: 'user', parts: [{ text: message }] });
 
     // 2. Anti-Loop State Check: Check if phone number exists in message or history
