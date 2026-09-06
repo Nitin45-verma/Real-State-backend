@@ -51,6 +51,12 @@ const compression = require('compression');
 app.use(compression());
 app.use(express.json());
 
+// Security middleware to ensure no unsupported Permissions-Policy is sent
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  next();
+});
+
 // Ensure uploads directory exists for file uploads
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
